@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import Cat from './Cat'
 import './App.css'
 
 const QUESTIONS = {
@@ -131,7 +132,21 @@ textareaRef.current.scrollTop = textareaRef.current.scrollHeight
 const speak = (text) => {
 window.speechSynthesis.cancel()
 const utterance = new SpeechSynthesisUtterance(text)
-utterance.rate = 0.9
+
+// Find the best voice
+const voices = window.speechSynthesis.getVoices()
+const preferred = voices.find(v =>
+v.name.includes('Samantha') ||
+v.name.includes('Karen') ||
+v.name.includes('Moira') ||
+v.name.includes('Google US English') ||
+(v.lang === 'en-US' && v.localService)
+)
+if (preferred) utterance.voice = preferred
+
+utterance.rate = 0.88
+utterance.pitch = 1.1
+utterance.volume = 1
 window.speechSynthesis.speak(utterance)
 }
 
@@ -269,7 +284,6 @@ setTimeout(() => speak(questions[next]), 500)
 setScreen('done')
 }
 }
-
 return (
 <div className="app">
 
@@ -447,7 +461,8 @@ onClick={() => setActiveTab(tab.id)}
 </button>
 </div>
 )}
-
+<Cat isActive={isListening} />
 </div>
+
 )
 }
