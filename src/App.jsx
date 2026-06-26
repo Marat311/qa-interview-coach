@@ -1,89 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import Cat from './Cat'
 import './App.css'
-
-const QUESTIONS = {
-api: {
-junior: [
-"What is an API and how does it work?",
-"What is the difference between GET and POST requests?",
-"How do you test a REST API manually?",
-"What is a status code 404 and 500?",
-],
-mid: [
-"How do you design an API test strategy?",
-"What is the difference between REST and GraphQL testing?",
-"How do you handle authentication in API testing?",
-"Explain how you would test pagination in an API.",
-],
-lead: [
-"How do you build an API testing framework from scratch?",
-"How do you ensure API contract testing in a microservices architecture?",
-"How do you integrate API tests into a CI/CD pipeline?",
-"How do you measure API test coverage?",
-],
-},
-sql: {
-junior: [
-"What is the difference between WHERE and HAVING?",
-"Explain JOIN types with examples.",
-"How do you find duplicate records in a table?",
-"What is a primary key vs foreign key?",
-],
-mid: [
-"How do you use SQL to verify data integrity after a feature release?",
-"Explain window functions and when you'd use them in QA.",
-"How do you write a query to compare two tables?",
-"How do you debug a slow query?",
-],
-lead: [
-"How do you design a data validation strategy for a data pipeline?",
-"How do you test database migrations?",
-"Explain your approach to performance testing at the database level.",
-"How do you ensure test data management at scale?",
-],
-},
-softskills: {
-junior: [
-"Tell me about yourself and your QA experience.",
-"How do you handle disagreements with developers about bugs?",
-"Describe a time you found a critical bug before release.",
-"How do you prioritize your testing tasks?",
-],
-mid: [
-"How do you influence quality culture in a team?",
-"Describe how you handle tight deadlines and incomplete requirements.",
-"How do you communicate testing progress to stakeholders?",
-"Tell me about a time you improved a QA process.",
-],
-lead: [
-"How do you build and mentor a QA team?",
-"How do you define a quality strategy for a new product?",
-"Describe how you handle conflicts between speed and quality.",
-"How do you measure the effectiveness of your QA team?",
-],
-},
-automation: {
-junior: [
-"What is the difference between manual and automation testing?",
-"What frameworks have you used for test automation?",
-"How do you decide what to automate?",
-"What is a Page Object Model?",
-],
-mid: [
-"How do you structure a large automation test suite?",
-"How do you handle flaky tests?",
-"Explain your approach to test data management in automation.",
-"How do you integrate automation into CI/CD?",
-],
-lead: [
-"How do you choose an automation strategy for a new project?",
-"How do you reduce technical debt in a test automation codebase?",
-"How do you scale automation across multiple teams?",
-"How do you report and track automation ROI?",
-],
-},
-}
+import Cat from './Cat'
 
 const CATEGORIES = [
 { id: 'api', label: 'API Testing', icon: '🔌' },
@@ -117,10 +34,11 @@ const [feedback, setFeedback] = useState(null)
 const [isLoading, setIsLoading] = useState(false)
 const [activeTab, setActiveTab] = useState('score')
 const [rephrasedQuestion, setRephrasedQuestion] = useState('')
+const [generatedQuestions, setGeneratedQuestions] = useState([])
 const recognitionRef = useRef(null)
 const textareaRef = useRef(null)
 
-const questions = category && level ? QUESTIONS[category][level] : []
+const questions = generatedQuestions
 const currentQuestion = questions[questionIndex]
 
 useEffect(() => {
@@ -132,8 +50,6 @@ textareaRef.current.scrollTop = textareaRef.current.scrollHeight
 const speak = (text) => {
 window.speechSynthesis.cancel()
 const utterance = new SpeechSynthesisUtterance(text)
-
-// Find the best voice
 const voices = window.speechSynthesis.getVoices()
 const preferred = voices.find(v =>
 v.name.includes('Samantha') ||
@@ -143,7 +59,6 @@ v.name.includes('Google US English') ||
 (v.lang === 'en-US' && v.localService)
 )
 if (preferred) utterance.voice = preferred
-
 utterance.rate = 0.88
 utterance.pitch = 1.1
 utterance.volume = 1
@@ -155,14 +70,54 @@ if (recognitionRef.current) recognitionRef.current.stop()
 setIsListening(false)
 }
 
-const startInterview = () => {
+const startInterview = async () => {
 setScreen('interview')
 setQuestionIndex(0)
 setTextAnswer('')
 setFeedback(null)
 setRephrasedQuestion('')
+setGeneratedQuestions([])
 stopMic()
-setTimeout(() => speak(questions[0]), 500)
+setIsLoading(true)
+try {
+const response = await fetch('https://api.anthropic.com/v1/messages', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
+'anthropic-version': '2023-06-01',
+'anthropic-dangerous-direct-browser-access': 'true',
+},
+body: JSON.stringify({
+model: 'claude-haiku-4-5-20251001',
+max_tokens: 600,
+messages: [{
+role: 'user',
+content: `Generate exactly 4 unique, technical interview questions for a ${level}-level ${category} QA/SDET engineer.
+Return ONLY a JSON array of 4 strings, no explanations, no markdown, no numbering.
+Example: ["Question 1?","Question 2?","Question 3?","Question 4?"]
+Make questions specific, technical, and appropriately challenging for ${level} level.`
+}]
+})
+})
+const data = await response.json()
+const text = data.content[0].text.trim()
+const clean = text.replace(/```json|```/g, '').trim()
+const parsed = JSON.parse(clean)
+setGeneratedQuestions(parsed)
+setIsLoading(false)
+setTimeout(() => speak(parsed[0]), 500)
+} catch (error) {
+const fallback = [
+`Explain your ${category} testing approach at ${level} level.`,
+`What tools do you use for ${category} and why?`,
+`Describe a challenging ${category} problem you solved.`,
+`How do you ensure quality in ${category} at ${level} level?`,
+]
+setGeneratedQuestions(fallback)
+setIsLoading(false)
+setTimeout(() => speak(fallback[0]), 500)
+}
 }
 
 const startListening = () => {
@@ -284,6 +239,7 @@ setTimeout(() => speak(questions[next]), 500)
 setScreen('done')
 }
 }
+
 return (
 <div className="app">
 
@@ -329,12 +285,20 @@ Start Interview →
 <div className="interview">
 <div className="top-bar">
 <button className="back-link" onClick={() => { stopMic(); setScreen('home') }}>← Back</button>
-<div className="progress-pill">{questionIndex + 1} / {questions.length}</div>
+<div className="progress-pill">{questionIndex + 1} / {questions.length || 4}</div>
 </div>
 <div className="tags">
 <span className="tag">{CATEGORIES.find(c => c.id === category)?.label}</span>
 <span className="tag">{level}</span>
 </div>
+
+{isLoading && !currentQuestion ? (
+<div className="loading">
+<div className="spinner" />
+Generating your questions...
+</div>
+) : (
+<>
 <div className="question-card">
 <p>{currentQuestion}</p>
 <div className="question-btns">
@@ -346,9 +310,7 @@ Start Interview →
 </button>
 </div>
 {rephrasedQuestion && (
-<div className="rephrased">
-💬 {rephrasedQuestion}
-</div>
+<div className="rephrased">💬 {rephrasedQuestion}</div>
 )}
 </div>
 
@@ -374,6 +336,8 @@ rows={5}
 <button className="start-btn" onClick={getFeedback}>
 Get Feedback →
 </button>
+)}
+</>
 )}
 </div>
 )}
@@ -450,19 +414,25 @@ onClick={() => setActiveTab(tab.id)}
 
 {screen === 'done' && (
 <div className="done-screen">
-<div className="done-emoji">🏆</div>
-<div className="done-stars">⭐⭐⭐</div>
+<span className="done-emoji">🏆</span>
+<span className="done-stars">⭐⭐⭐</span>
 <div className="done-card">
 <h1>Well done!</h1>
 <p>You completed all {questions.length} questions.<br/>Keep practicing to ace your interview!</p>
 </div>
-<button className="start-btn" onClick={() => { setScreen('home'); setCategory(null); setLevel(null) }}>
+<button className="start-btn" onClick={() => {
+setScreen('home')
+setCategory(null)
+setLevel(null)
+setGeneratedQuestions([])
+}}>
 🔄 Practice Again
 </button>
 </div>
 )}
-<Cat isActive={isListening} />
-</div>
 
+<Cat isActive={isListening} />
+
+</div>
 )
 }
