@@ -62,21 +62,65 @@ textareaRef.current.scrollTop = textareaRef.current.scrollHeight
 }
 }, [textAnswer])
 
-const speak = (text) => {
+const speak = async (text) => {
+if (!text) return
 window.speechSynthesis.cancel()
+
+const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY
+const voiceId = import.meta.env.VITE_ELEVENLABS_VOICE_ID
+
+console.log('ElevenLabs API Key:', apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING')
+console.log('ElevenLabs Voice ID:', voiceId || 'MISSING')
+
+if (apiKey && voiceId) {
+try {
+const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+'xi-api-key': apiKey,
+},
+body: JSON.stringify({
+text,
+model_id: 'eleven_turbo_v2_5',
+voice_settings: {
+stability: 0.5,
+similarity_boost: 0.75,
+style: 0.3,
+use_speaker_boost: true
+}
+})
+})
+
+console.log('ElevenLabs response status:', response.status)
+
+if (response.ok) {
+const audioBlob = await response.blob()
+const audioUrl = URL.createObjectURL(audioBlob)
+const audio = new Audio(audioUrl)
+audio.play()
+return
+} else {
+const errorText = await response.text()
+console.log('ElevenLabs error:', errorText)
+}
+} catch (error) {
+console.log('ElevenLabs failed:', error)
+}
+}
+
+// Fallback to browser voice
 const doSpeak = () => {
 const utterance = new SpeechSynthesisUtterance(text)
 const voices = window.speechSynthesis.getVoices()
-const preferred = voices.find(v => v.name === 'Samantha') ||
-voices.find(v => v.name === 'Karen') ||
-voices.find(v => v.name === 'Moira') ||
-voices.find(v => v.name.includes('Google US English')) ||
-voices.find(v => v.name.includes('Microsoft Aria')) ||
-voices.find(v => v.name.includes('Microsoft Jenny')) ||
-voices.find(v => v.lang === 'en-US' && !v.name.includes('Google'))
+const preferred =
+voices.find(v => v.name === 'Daniel') ||
+voices.find(v => v.name === 'Alex') ||
+voices.find(v => v.lang === 'en-GB') ||
+null
 if (preferred) utterance.voice = preferred
-utterance.rate = 0.92
-utterance.pitch = 1.05
+utterance.rate = 0.88
+utterance.pitch = 0.9
 utterance.volume = 1
 window.speechSynthesis.speak(utterance)
 }
@@ -257,18 +301,39 @@ Question number: ${questionNum} of ${mockTotal}
 Previous conversation:
 ${history.map(h => `Q: ${h.question}\nA: ${h.answer}`).join('\n\n')}
 
-Ask question #${questionNum}. Be natural, professional, conversational like a real interviewer.
-- Start with a brief natural transition
-- Ask ONE focused technical question based on the job description ${resume ? 'and candidate resume' : ''}
-- If resume is provided, reference specific experience from it occasionally
-- Keep it under 3 sentences
-- If this is question 1, briefly introduce yourself first`, 300)
-setMockQuestion(text.trim())
+${questionNum === 1 ? `This is the START of the interview.
+Introduce yourself as Alex, Lead SDET. Be warm and professional.
+Then ask the candidate to introduce themselves.
+${resume ? 'You have their resume but want to hear it in their own words first.' : ''}
+Keep it natural and welcoming. 2-3 sentences max.`
+
+: questionNum === 2 ? `This is question 2.
+${resume ?
+`You've read their resume. Now dive deeper - ask them specifically about:
+- Their most recent role and daily responsibilities
+- A specific project from their resume
+Make it feel like you're genuinely curious about their resume experience.`
+:
+`Ask the candidate to walk you through their current or most recent role and daily responsibilities. Be conversational.`}
+Keep it to 2-3 sentences.`
+
+: `This is question ${questionNum} - now ask TECHNICAL questions.
+Based on the job description ${resume ? "and candidate's resume" : ""}, ask ONE specific technical question.
+Build naturally on what they've shared so far.
+Be direct and professional. 2-3 sentences max.
+Do NOT repeat any previous questions.`}
+
+IMPORTANT: No markdown, no hashtags, no asterisks. Plain text only.`, 300)
+
+const cleaned = text.trim().replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/\*/g, '')
+setMockQuestion(cleaned)
 setIsMockLoading(false)
-speak(text.trim())
+speak(cleaned)
 } catch (error) {
-setMockQuestion(`Question ${questionNum}: Tell me about your experience relevant to this role.`)
+const fallback = "Hi! I'm Alex, Lead SDET here. Thanks for joining today. Could you tell me a bit about yourself and your background in QA?"
+setMockQuestion(fallback)
 setIsMockLoading(false)
+speak(fallback)
 }
 }
 
@@ -301,14 +366,13 @@ ${resume ? `Candidate Resume:\n${resume}` : ''}
 Full Interview:
 ${(history || mockHistory).map((h, i) => `Q${i + 1}: ${h.question}\nA: ${h.answer}`).join('\n\n')}
 
-Give a realistic hiring decision. ${resume ? 'Consider how well their resume experience matches their interview answers and the job requirements.' : ''}
-Respond in EXACT format:
+Give a realistic hiring decision. Respond in EXACT format:
 DECISION: [HIRED / NOT HIRED / STRONG HIRE / NEEDS MORE EXPERIENCE]
 SCORE: [X/10]
 SUMMARY: [2-3 sentences overall impression]
 STRENGTHS: [2-3 bullet points starting with •]
 CONCERNS: [2-3 bullet points starting with •]
-RECOMMENDATION: [1-2 sentences final recommendation as if writing to hiring manager]`, 1000)
+RECOMMENDATION: [1-2 sentences final recommendation]`, 1000)
 const decision = text.match(/DECISION:\s*(.+)/)?.[1]?.trim() || ''
 const score = text.match(/SCORE:\s*(.+)/)?.[1]?.trim() || ''
 const summary = text.match(/SUMMARY:\s*([\s\S]+?)(?=STRENGTHS:)/)?.[1]?.trim() || ''
@@ -367,27 +431,24 @@ Start Practice →
 {mode === 'mock' && (
 <>
 <p>Paste a real job description and your resume for a personalized 30-minute mock interview</p>
-
 <div className="section-label">Job Description *</div>
 <textarea
 className="text-input jd-input"
-placeholder="Paste the job description here... (requirements, responsibilities, tech stack)"
+placeholder="Paste the job description here..."
 value={jobDescription}
 onChange={(e) => setJobDescription(e.target.value)}
 rows={6}
 style={{ marginBottom: '16px' }}
 />
-
-<div className="section-label">Your Resume (optional but recommended)</div>
+<div className="section-label">Your Resume (optional)</div>
 <textarea
 className="text-input"
-placeholder="Paste your resume here... (experience, skills, projects, achievements — the interviewer will ask questions based on it)"
+placeholder="Paste your resume here... (the interviewer will ask questions based on it)"
 value={resume}
 onChange={(e) => setResume(e.target.value)}
 rows={5}
 style={{ marginBottom: '16px' }}
 />
-
 <div className="section-label">Your Name (optional)</div>
 <input
 className="name-input"
@@ -396,14 +457,12 @@ value={candidateName}
 onChange={(e) => setCandidateName(e.target.value)}
 style={{ marginBottom: '20px' }}
 />
-
 <button className="start-btn" onClick={startMockInterview} disabled={!jobDescription.trim()}>
 🎯 Start Mock Interview
 </button>
 <p className="hint">⏱ ~30 minutes · 8 questions · Hiring decision at the end</p>
 </>
 )}
-
 <p className="hint" style={{ marginTop: '8px' }}>🎤 Use Chrome for voice features</p>
 </div>
 )}
@@ -489,12 +548,10 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 }}>⏱ {formatTime(timeLeft)}</div>
 <div className="progress-pill">{mockQuestionNum} / {mockTotal}</div>
 </div>
-
 <div className="mock-interviewer">
-<div className="interviewer-avatar">👨</div>
+<div className="interviewer-avatar">👨‍💼</div>
 <div className="interviewer-name">Alex — Lead SDET Interviewer</div>
 </div>
-
 <div className="question-card">
 {isMockLoading ? (
 <div className="loading" style={{ padding: '20px' }}><div className="spinner" />Alex is thinking...</div>
@@ -505,7 +562,6 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 <button className="speak-btn" onClick={() => speak(mockQuestion)}>🔊 Repeat</button>
 )}
 </div>
-
 {!isMockLoading && (
 <>
 <div className="answer-box">
