@@ -3,13 +3,13 @@ import './App.css'
 import Cat from './Cat'
 
 const CATEGORIES = [
-{ id: 'api', label: 'API Testing', icon: '🔌' },
-{ id: 'sql', label: 'SQL & Data', icon: '🗄️' },
-{ id: 'softskills', label: 'Soft Skills', icon: '💬' },
-{ id: 'automation', label: 'Automation', icon: '🤖' },
-{ id: 'ui', label: 'UI Testing', icon: '🖥️' },
-{ id: 'playwright', label: 'Playwright', icon: '🎭' },
-{ id: 'ai', label: 'AI Testing', icon: '🧠' },
+  { id: 'api', label: 'API Testing' },
+  { id: 'sql', label: 'SQL & Data' },
+  { id: 'softskills', label: 'Soft Skills' },
+  { id: 'automation', label: 'Automation' },
+  { id: 'ui', label: 'UI Testing' },
+  { id: 'playwright', label: 'Playwright' },
+  { id: 'ai', label: 'AI Testing' },
 ]
 
 const LEVELS = [
@@ -392,14 +392,14 @@ return (
 {screen === 'home' && (
 <div className="home">
 <div className="badge">AI Powered</div>
-<h1>QA Interview Coach</h1>
+<h1>QA Interview <span className="gradient-word">Coach</span></h1>
 <div className="mode-tabs">
-<button className={`mode-tab ${mode === 'practice' ? 'active' : ''}`} onClick={() => setMode('practice')}>
-📚 Practice
-</button>
-<button className={`mode-tab ${mode === 'mock' ? 'active' : ''}`} onClick={() => setMode('mock')}>
-🎯 Mock Interview
-</button>
+  <button className={`mode-tab ${mode === 'practice' ? 'active' : ''}`} onClick={() => setMode('practice')}>
+    Practice
+  </button>
+  <button className={`mode-tab ${mode === 'mock' ? 'active' : ''}`} onClick={() => setMode('mock')}>
+    Mock Interview
+  </button>
 </div>
 
 {mode === 'practice' && (
@@ -458,12 +458,12 @@ onChange={(e) => setCandidateName(e.target.value)}
 style={{ marginBottom: '20px' }}
 />
 <button className="start-btn" onClick={startMockInterview} disabled={!jobDescription.trim()}>
-🎯 Start Mock Interview
+ Start Mock Interview
 </button>
-<p className="hint">⏱ ~30 minutes · 8 questions · Hiring decision at the end</p>
+<p className="hint"> ~30 minutes · 8 questions · Hiring decision at the end</p>
 </>
 )}
-<p className="hint" style={{ marginTop: '8px' }}>🎤 Use Chrome for voice features</p>
+<p className="hint" style={{ marginTop: '8px' }}> Use Chrome for voice features</p>
 </div>
 )}
 
@@ -485,13 +485,13 @@ style={{ marginBottom: '20px' }}
 <p>{currentQuestion}</p>
 <div className="question-btns">
 <button className="speak-btn" onClick={() => speak(currentQuestion)}>🔊 Repeat</button>
-<button className="speak-btn" onClick={rephraseQuestion}>🔄 Rephrase</button>
+<button className="speak-btn" onClick={rephraseQuestion}>Rephrase</button>
 </div>
 {rephrasedQuestion && <div className="rephrased">💬 {rephrasedQuestion}</div>}
 </div>
 <div className="answer-box">
 <button className={`mic-btn-large ${isListening ? 'recording' : ''}`} onClick={isListening ? stopMic : startListening}>
-{isListening ? '⏹ Stop Recording' : '🎤 Record Answer'}
+{isListening ? 'Stop Recording' : 'Record Answer'}
 </button>
 <div className="divider">or type your answer</div>
 <textarea ref={textareaRef} className="text-input" placeholder="Type your answer here..." value={textAnswer} onChange={(e) => setTextAnswer(e.target.value)} rows={5} />
@@ -559,14 +559,14 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 <p>{mockQuestion}</p>
 )}
 {mockQuestion && !isMockLoading && (
-<button className="speak-btn" onClick={() => speak(mockQuestion)}>🔊 Repeat</button>
+<button className="speak-btn" onClick={() => speak(mockQuestion)}>Repeat</button>
 )}
 </div>
 {!isMockLoading && (
 <>
 <div className="answer-box">
 <button className={`mic-btn-large ${isListening ? 'recording' : ''}`} onClick={isListening ? stopMic : startListening}>
-{isListening ? '⏹ Stop Recording' : '🎤 Record Answer'}
+{isListening ? 'Stop Recording' : 'Record Answer'}
 </button>
 <div className="divider">or type your answer</div>
 <textarea ref={textareaRef} className="text-input" placeholder="Type your answer..." value={textAnswer} onChange={(e) => setTextAnswer(e.target.value)} rows={4} />
@@ -630,7 +630,7 @@ setJobDescription('')
 setResume('')
 setMockFeedback(null)
 }}>
-🔄 Try Again
+ Try Again
 </button>
 </>
 )}
@@ -651,7 +651,7 @@ setCategory(null)
 setLevel(null)
 setGeneratedQuestions([])
 }}>
-🔄 Practice Again
+ Practice Again
 </button>
 </div>
 )}

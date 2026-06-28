@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 
 export default function Cat({ isActive }) {
 const [action, setAction] = useState('sit')
-const [pos, setPos] = useState({ x: window.innerWidth - 160, y: window.innerHeight - 160 })
+const [pos, setPos] = useState({ x: window.innerWidth - 140, y: window.innerHeight - 200 })
 const [flip, setFlip] = useState(false)
 const posRef = useRef(pos)
 posRef.current = pos
@@ -14,8 +14,11 @@ const timer = setInterval(() => {
 const next = actions[Math.floor(Math.random() * actions.length)]
 setAction(next)
 if (next === 'walk') {
-const newX = 20 + Math.random() * (window.innerWidth - 180)
-const newY = 20 + Math.random() * (window.innerHeight - 180)
+const side = Math.random() > 0.5 ? 'left' : 'right'
+const newX = side === 'left'
+  ? Math.random() * 20
+  : window.innerWidth - 150 - Math.random() * 20
+const newY = window.innerHeight * 0.5 + Math.random() * (window.innerHeight * 0.4)
 setFlip(newX < posRef.current.x)
 setPos({ x: newX, y: newY })
 }
