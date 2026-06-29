@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
-import KittyCoach from './KittyCoach'
 
 const STORAGE_KEY = 'qa_coach_history'
 
@@ -32,17 +31,19 @@ const CATEGORIES = [
 ]
 
 const LEVELS = [
-{ id: 'junior', label: 'Junior', color: '#4ade80' },
-{ id: 'mid', label: 'Mid', color: '#facc15' },
-{ id: 'lead', label: 'Lead', color: '#f87171' },
+  { id: 'junior', label: 'Junior', color: '#4ade80' },
+  { id: 'mid', label: 'Mid', color: '#facc15' },
+  { id: 'senior', label: 'Senior', color: '#60a5fa' },
+  { id: 'lead', label: 'Lead', color: '#f87171' },
+  { id: 'manager', label: 'Manager', color: '#8b5cf6' },
 ]
 
 const TABS = [
-{ id: 'score', label: '⭐ Score' },
-{ id: 'good', label: '✅ Good' },
-{ id: 'improve', label: '💡 Improve' },
-{ id: 'tip', label: '🎯 Tip' },
-{ id: 'ideal', label: '🏆 Ideal' },
+{ id: 'score', label: 'Score' },
+{ id: 'good', label: 'Good' },
+{ id: 'improve', label: 'Improve' },
+{ id: 'tip', label: 'Tip' },
+{ id: 'ideal', label: 'Ideal' },
 ]
 
 const MOCK_DECISION_TABS = [
@@ -290,6 +291,7 @@ setRephrasedQuestion('Could not rephrase. Check API key.')
 const getFeedback = async () => {
 if (!textAnswer.trim()) { alert('Please write or record your answer first.'); return }
 stopMic()
+stopSpeech()
 setIsLoading(true)
 setActiveTab('score')
 setScreen('feedback')
@@ -349,6 +351,15 @@ const formatTime = (seconds) => {
 const m = Math.floor(seconds / 60).toString().padStart(2, '0')
 const s = (seconds % 60).toString().padStart(2, '0')
 return `${m}:${s}`
+}
+
+const avgScoreClass = (avg) => {
+const score = parseFloat(avg)
+if (Number.isNaN(score)) return ''
+if (score <= 2) return 'avg-low'
+if (score <= 5) return 'avg-mid'
+if (score <= 7) return 'avg-ok'
+return 'avg-high'
 }
 
 const startMockInterview = async () => {
@@ -436,6 +447,8 @@ await askMockQuestion(newHistory, next)
 }
 
 const endMockInterview = async (history) => {
+stopMic()
+stopSpeech()
 setScreen('mock-feedback')
 setIsMockLoading(true)
 clearInterval(timerRef.current)
@@ -473,6 +486,10 @@ const nextHistory = saveInterview({
   jobDescription: jobDescription.slice(0, 50) + '...',
   decision: decision || mockFeedback?.decision || '-',
   score: score || mockFeedback?.score || '-',
+  summary,
+  strengths,
+  concerns,
+  recommendation,
 })
 setHistory(nextHistory)
 }
@@ -503,7 +520,6 @@ return (
 <div className="grid-2">
 {CATEGORIES.map(cat => (
 <button key={cat.id} className={`card-btn ${category === cat.id ? 'selected' : ''}`} onClick={() => setCategory(cat.id)}>
-<span className="card-icon">{cat.icon}</span>
 <span>{cat.label}</span>
 </button>
 ))}
@@ -517,7 +533,7 @@ return (
 ))}
 </div>
 <button className="start-btn" onClick={startInterview} disabled={!category || !level}>
-Start Practice →
+Start Practice
 </button>
 </>
 )}
@@ -579,6 +595,12 @@ style={{ marginBottom: '20px' }}
       const practices = history.filter(h => h.type === 'practice').length
       const mocks = history.filter(h => h.type === 'mock').length
       const hired = history.filter(h => h.decision?.includes('HIRED') && !h.decision?.includes('NOT')).length
+      const createClass = (label, value) => {
+        if (label === 'Practice' || label === 'Mock') return 'blue-tab'
+        if (label === 'Avg Score') return `avg-score ${avgScoreClass(value)}`
+        if (label === 'Hired') return `hired-score ${avgScoreClass(value)}`
+        return ''
+      }
       return (
         <div className="history-stats">
           {[
@@ -587,7 +609,7 @@ style={{ marginBottom: '20px' }}
             { label: 'Mock', value: mocks },
             { label: 'Hired', value: hired },
           ].map(stat => (
-            <div key={stat.label} className="history-stat-card">
+            <div key={stat.label} className={`history-stat-card ${createClass(stat.label, stat.value)}`}>
               <div>{stat.value}</div>
               <div>{stat.label}</div>
             </div>
@@ -601,7 +623,7 @@ style={{ marginBottom: '20px' }}
     ) : (
       <div className="history-list">
         {history.map(item => (
-          <div key={item.id} className="history-card">
+          <div key={item.id} className={`history-card ${item.type}`}>
             <div className="history-card-top">
               <div className="history-card-labels">
                 <span className={`history-badge ${item.type}`}>{item.type === 'mock' ? 'Mock' : 'Practice'}</span>
@@ -611,7 +633,7 @@ style={{ marginBottom: '20px' }}
               <span className="history-date">{item.date}</span>
             </div>
             <div className="history-card-body">
-              <div className="history-card-copy">{item.question ? item.question.slice(0, 60) + '...' : item.jobDescription}</div>
+              <div className="history-card-copy">{item.question || item.jobDescription}</div>
               <div className="history-card-score">
                 {item.score && item.score !== '-' && <span className="score-value">{item.score}</span>}
                 {item.decision && <span className={`history-decision ${item.decision.includes('NOT') ? 'no' : 'yes'}`}>{item.decision.replace('STRONG ', '')}</span>}
@@ -629,7 +651,7 @@ style={{ marginBottom: '20px' }}
 {screen === 'interview' && (
 <div className="interview">
 <div className="top-bar">
-<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>← Back</button>
+<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>Back</button>
 <div className="progress-pill">{questionIndex + 1} / {questions.length || 4}</div>
 </div>
 <div className="tags">
@@ -643,10 +665,10 @@ style={{ marginBottom: '20px' }}
 <div className="question-card">
 <p>{currentQuestion}</p>
 <div className="question-btns">
-<button className="speak-btn" onClick={() => speak(currentQuestion)}>🔊 Repeat</button>
+<button className="speak-btn" onClick={() => speak(currentQuestion)}>Repeat</button>
 <button className="speak-btn" onClick={rephraseQuestion}>Rephrase</button>
 </div>
-{rephrasedQuestion && <div className="rephrased">💬 {rephrasedQuestion}</div>}
+{rephrasedQuestion && <div className="rephrased">{rephrasedQuestion}</div>}
 </div>
 <div className="answer-box">
 <button className={`mic-btn-large ${isListening ? 'recording' : ''}`} onClick={isListening ? stopMic : startListening}>
@@ -655,7 +677,7 @@ style={{ marginBottom: '20px' }}
 <div className="divider">or type your answer</div>
 <textarea ref={textareaRef} className="text-input" placeholder="Type your answer here..." value={textAnswer} onChange={(e) => setTextAnswer(e.target.value)} rows={5} />
 </div>
-{textAnswer.trim() && <button className="start-btn" onClick={getFeedback}>Get Feedback →</button>}
+{textAnswer.trim() && <button className="start-btn" onClick={getFeedback}>Get Feedback</button>}
 </>
 )}
 </div>
@@ -664,7 +686,7 @@ style={{ marginBottom: '20px' }}
 {screen === 'feedback' && (
 <div className="feedback-screen">
 <div className="top-bar">
-<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>← Home</button>
+<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>Home</button>
 <div className="progress-pill">{questionIndex + 1} / {questions.length}</div>
 </div>
 <div className="question-recap">{currentQuestion}</div>
@@ -681,15 +703,15 @@ style={{ marginBottom: '20px' }}
 </div>
 <div className="tab-content">
 {activeTab === 'score' && <div className="score-card"><div className="score-number">{feedback.score}</div><p>Overall score for your answer</p></div>}
-{activeTab === 'good' && <div className="feedback-item good"><span className="fb-label">✅ What was good</span><p>{feedback.good}</p></div>}
-{activeTab === 'improve' && <div className="feedback-item improve"><span className="fb-label">💡 What to improve</span><p>{feedback.improve}</p></div>}
-{activeTab === 'tip' && <div className="feedback-item tip"><span className="fb-label">🎯 Actionable tip</span><p>{feedback.tip}</p></div>}
-{activeTab === 'ideal' && <div className="feedback-item ideal"><span className="fb-label">🏆 Ideal answer</span><p>{feedback.ideal}</p></div>}
+{activeTab === 'good' && <div className="feedback-item good"><span className="fb-label">What was good</span><p>{feedback.good}</p></div>}
+{activeTab === 'improve' && <div className="feedback-item improve"><span className="fb-label">What to improve</span><p>{feedback.improve}</p></div>}
+{activeTab === 'tip' && <div className="feedback-item tip"><span className="fb-label">Actionable tip</span><p>{feedback.tip}</p></div>}
+{activeTab === 'ideal' && <div className="feedback-item ideal"><span className="fb-label">Ideal answer</span><p>{feedback.ideal}</p></div>}
 </div>
 </>
 )}
 <div className="controls" style={{ marginTop: '24px' }}>
-<button onClick={nextQuestion}>{questionIndex < questions.length - 1 ? 'Next Question →' : 'Finish'}</button>
+<button onClick={nextQuestion}>{questionIndex < questions.length - 1 ? 'Next Question' : 'Finish'}</button>
 <button className="secondary" onClick={() => setScreen('home')}>Home</button>
 </div>
 </div>
@@ -698,13 +720,13 @@ style={{ marginBottom: '20px' }}
 {screen === 'mock-interview' && (
 <div className="interview">
 <div className="top-bar">
-<button className="back-link" onClick={() => { clearInterval(timerRef.current); stopSpeech(); stopMic(); setScreen('home') }}>← Exit</button>
+<button className="back-link" onClick={() => { clearInterval(timerRef.current); stopSpeech(); stopMic(); setScreen('home') }}>Exit</button>
 <div style={{
 background: timeLeft < 300 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
 border: `1px solid ${timeLeft < 300 ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
 color: timeLeft < 300 ? '#ef4444' : '#64748b',
-padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700', fontFamily: 'monospace'
-}}>⏱ {formatTime(timeLeft)}</div>
+padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
+}}>Time: {formatTime(timeLeft)}</div>
 <div className="progress-pill">{mockQuestionNum} / {mockTotal}</div>
 </div>
 <div className="mock-interviewer">
@@ -732,7 +754,7 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 </div>
 {textAnswer.trim() && (
 <button className="start-btn" onClick={submitMockAnswer}>
-{mockQuestionNum >= mockTotal ? 'Finish Interview →' : 'Next Question →'}
+{mockQuestionNum >= mockTotal ? 'Finish Interview' : 'Next Question'}
 </button>
 )}
 </>
@@ -743,7 +765,7 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 {screen === 'mock-feedback' && (
 <div className="feedback-screen">
 <div className="top-bar">
-<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>← Home</button>
+<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>Home</button>
 </div>
 <div className="mock-interviewer" style={{ marginBottom: '20px' }}>
 <div className="interviewer-avatar">BV</div>
@@ -812,11 +834,9 @@ setMockFeedback(null)
 
 {screen === 'done' && (
 <div className="done-screen">
-<span className="done-emoji">🏆</span>
-<span className="done-stars">⭐⭐⭐</span>
 <div className="done-card">
 <h1>Well done!</h1>
-<p>You completed all {questions.length} questions.<br />Keep practicing to ace your interview!</p>
+<p>You completed all {questions.length} questions.<br />Keep practicing to improve your interview skills.</p>
 </div>
 <button className="start-btn" onClick={() => {
 setScreen('home')
