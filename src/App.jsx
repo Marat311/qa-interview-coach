@@ -2,6 +2,25 @@ import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import KittyCoach from './KittyCoach'
 
+const STORAGE_KEY = 'qa_coach_history'
+
+const saveInterview = (data) => {
+  try {
+    const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    const nextHistory = [{ ...data, id: Date.now(), date: new Date().toLocaleDateString() }, ...history]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextHistory.slice(0, 50)))
+    return nextHistory.slice(0, 50)
+  } catch (e) {
+    return []
+  }
+}
+
+const loadHistory = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+  } catch (e) { return [] }
+}
+
 const CATEGORIES = [
   { id: 'api', label: 'API Testing' },
   { id: 'sql', label: 'SQL & Data' },
@@ -26,6 +45,14 @@ const TABS = [
 { id: 'ideal', label: '🏆 Ideal' },
 ]
 
+const MOCK_DECISION_TABS = [
+{ id: 'decision', label: 'Decision' },
+{ id: 'summary', label: 'Summary' },
+{ id: 'strengths', label: 'Strengths' },
+{ id: 'concerns', label: 'Concerns' },
+{ id: 'recommendation', label: 'Recommendation' },
+]
+
 export default function App() {
 const [screen, setScreen] = useState('home')
 const [mode, setMode] = useState('practice')
@@ -37,6 +64,7 @@ const [textAnswer, setTextAnswer] = useState('')
 const [feedback, setFeedback] = useState(null)
 const [isLoading, setIsLoading] = useState(false)
 const [activeTab, setActiveTab] = useState('score')
+const [mockFeedbackTab, setMockFeedbackTab] = useState('decision')
 const [rephrasedQuestion, setRephrasedQuestion] = useState('')
 const [generatedQuestions, setGeneratedQuestions] = useState([])
 const [jobDescription, setJobDescription] = useState('')
@@ -49,9 +77,12 @@ const [mockTotal] = useState(8)
 const [mockFeedback, setMockFeedback] = useState(null)
 const [isMockLoading, setIsMockLoading] = useState(false)
 const [timeLeft, setTimeLeft] = useState(30 * 60)
+const [historyScreen, setHistoryScreen] = useState(false)
+const [history, setHistory] = useState(loadHistory)
 const recognitionRef = useRef(null)
 const textareaRef = useRef(null)
 const timerRef = useRef(null)
+const audioRef = useRef(null)
 
 const questions = generatedQuestions
 const currentQuestion = questions[questionIndex]
@@ -61,6 +92,12 @@ if (textareaRef.current) {
 textareaRef.current.scrollTop = textareaRef.current.scrollHeight
 }
 }, [textAnswer])
+
+useEffect(() => {
+if (mode === 'history') {
+setHistory(loadHistory())
+}
+}, [mode])
 
 const speak = async (text) => {
 if (!text) return
@@ -98,6 +135,11 @@ if (response.ok) {
 const audioBlob = await response.blob()
 const audioUrl = URL.createObjectURL(audioBlob)
 const audio = new Audio(audioUrl)
+if (audioRef.current) {
+  audioRef.current.pause()
+  audioRef.current.currentTime = 0
+}
+audioRef.current = audio
 audio.play()
 return
 } else {
@@ -114,8 +156,8 @@ const doSpeak = () => {
 const utterance = new SpeechSynthesisUtterance(text)
 const voices = window.speechSynthesis.getVoices()
 const preferred =
-voices.find(v => v.name === 'Daniel') ||
-voices.find(v => v.name === 'Alex') ||
+voices.find(v => v.name === 'Matthew') ||
+voices.find(v => v.name ==='Benjamin') ||
 voices.find(v => v.lang === 'en-GB') ||
 null
 if (preferred) utterance.voice = preferred
@@ -128,6 +170,15 @@ if (window.speechSynthesis.getVoices().length === 0) {
 window.speechSynthesis.onvoiceschanged = doSpeak
 } else {
 doSpeak()
+}
+}
+
+const stopSpeech = () => {
+window.speechSynthesis.cancel()
+if (audioRef.current) {
+  audioRef.current.pause()
+  audioRef.current.currentTime = 0
+  audioRef.current = null
 }
 }
 
@@ -226,6 +277,11 @@ stopMic()
 setIsLoading(true)
 setActiveTab('score')
 setScreen('feedback')
+let score = ''
+let good = ''
+let improve = ''
+let tip = ''
+let ideal = ''
 try {
 const text = await callAPI(`You are a senior QA interviewer evaluating a ${level}-level candidate for ${category} skills.
 Question: "${currentQuestion}"
@@ -237,20 +293,29 @@ GOOD: [One sentence on what was strong]
 IMPROVE: [One sentence on what to improve]
 TIP: [One concrete actionable tip]
 IDEAL: [Write the ideal answer directly. No intro phrases. 2-3 sentences.]`, 800)
-const score = text.match(/SCORE:\s*(.+)/)?.[1]?.trim() || ''
-const good = text.match(/GOOD:\s*(.+)/)?.[1]?.trim() || ''
-const improve = text.match(/IMPROVE:\s*(.+)/)?.[1]?.trim() || ''
-const tip = text.match(/TIP:\s*(.+)/)?.[1]?.trim() || ''
-const ideal = text.match(/IDEAL:\s*([\s\S]+)/)?.[1]?.trim() || ''
+score = text.match(/SCORE:\s*(.+)/)?.[1]?.trim() || ''
+good = text.match(/GOOD:\s*(.+)/)?.[1]?.trim() || ''
+improve = text.match(/IMPROVE:\s*(.+)/)?.[1]?.trim() || ''
+tip = text.match(/TIP:\s*(.+)/)?.[1]?.trim() || ''
+ideal = text.match(/IDEAL:\s*([\s\S]+)/)?.[1]?.trim() || ''
 setFeedback({ score, good, improve, tip, ideal })
 } catch (error) {
 setFeedback({ score: '-', good: 'Error', improve: 'Could not get feedback', tip: 'Check API key', ideal: '' })
 }
 setIsLoading(false)
+saveInterview({
+  type: 'practice',
+  category: CATEGORIES.find(c => c.id === category)?.label,
+  level,
+  question: currentQuestion,
+  score: score || feedback?.score || '-',
+})
+setHistory(loadHistory())
 }
 
 const nextQuestion = () => {
 stopMic()
+stopSpeech()
 setRephrasedQuestion('')
 setTextAnswer('')
 setFeedback(null)
@@ -291,7 +356,7 @@ await askMockQuestion([], 1)
 const askMockQuestion = async (history, questionNum) => {
 setIsMockLoading(true)
 try {
-const text = await callAPI(`You are Alex, an experienced Lead SDET interviewer conducting a real job interview.
+const text = await callAPI(`You are Benjamin, an experienced QA Manager interviewer conducting a real job interview.
 
 Job Description: ${jobDescription}
 ${resume ? `Candidate Resume:\n${resume}` : ''}
@@ -302,7 +367,7 @@ Previous conversation:
 ${history.map(h => `Q: ${h.question}\nA: ${h.answer}`).join('\n\n')}
 
 ${questionNum === 1 ? `This is the START of the interview.
-Introduce yourself as Alex, Lead SDET. Be warm and professional.
+Introduce yourself as Benjamin, QA Manager. Be warm and professional.
 Then ask the candidate to introduce themselves.
 ${resume ? 'You have their resume but want to hear it in their own words first.' : ''}
 Keep it natural and welcoming. 2-3 sentences max.`
@@ -330,7 +395,7 @@ setMockQuestion(cleaned)
 setIsMockLoading(false)
 speak(cleaned)
 } catch (error) {
-const fallback = "Hi! I'm Alex, Lead SDET here. Thanks for joining today. Could you tell me a bit about yourself and your background in QA?"
+const fallback = "Hi! I'm Benjamin, QA Manager here. Thanks for joining today. Could you tell me a bit about yourself and your background in QA?"
 setMockQuestion(fallback)
 setIsMockLoading(false)
 speak(fallback)
@@ -339,6 +404,7 @@ speak(fallback)
 
 const submitMockAnswer = async () => {
 if (!textAnswer.trim()) return
+stopSpeech()
 stopMic()
 const newHistory = [...mockHistory, { question: mockQuestion, answer: textAnswer }]
 setMockHistory(newHistory)
@@ -358,7 +424,7 @@ setScreen('mock-feedback')
 setIsMockLoading(true)
 clearInterval(timerRef.current)
 try {
-const text = await callAPI(`You are Alex, a Lead SDET interviewer. You just finished interviewing ${candidateName || 'the candidate'}.
+const text = await callAPI(`You are Benjamin, a QA Manager interviewer. You just finished interviewing ${candidateName || 'the candidate'}.
 
 Job Description: ${jobDescription}
 ${resume ? `Candidate Resume:\n${resume}` : ''}
@@ -380,10 +446,19 @@ const strengths = text.match(/STRENGTHS:\s*([\s\S]+?)(?=CONCERNS:)/)?.[1]?.trim(
 const concerns = text.match(/CONCERNS:\s*([\s\S]+?)(?=RECOMMENDATION:)/)?.[1]?.trim() || ''
 const recommendation = text.match(/RECOMMENDATION:\s*([\s\S]+)/)?.[1]?.trim() || ''
 setMockFeedback({ decision, score, summary, strengths, concerns, recommendation })
+setMockFeedbackTab('decision')
 } catch (error) {
 setMockFeedback({ decision: 'ERROR', score: '-', summary: 'Could not generate feedback', strengths: '', concerns: '', recommendation: '' })
+setMockFeedbackTab('decision')
 }
 setIsMockLoading(false)
+const nextHistory = saveInterview({
+  type: 'mock',
+  jobDescription: jobDescription.slice(0, 50) + '...',
+  decision: decision || mockFeedback?.decision || '-',
+  score: score || mockFeedback?.score || '-',
+})
+setHistory(nextHistory)
 }
 
 return (
@@ -399,6 +474,9 @@ return (
   </button>
   <button className={`mode-tab ${mode === 'mock' ? 'active' : ''}`} onClick={() => setMode('mock')}>
     Mock Interview
+  </button>
+  <button className={`mode-tab ${mode === 'history' ? 'active' : ''}`} onClick={() => { setMode('history'); setHistory(loadHistory()) }}>
+    History
   </button>
 </div>
 
@@ -549,12 +627,12 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 <div className="progress-pill">{mockQuestionNum} / {mockTotal}</div>
 </div>
 <div className="mock-interviewer">
-<div className="interviewer-avatar">👨‍💼</div>
-<div className="interviewer-name">Alex — Lead SDET Interviewer</div>
+<div className="interviewer-avatar">BV</div>
+<div className="interviewer-name">Benjamin — QA Manager Interviewer</div>
 </div>
 <div className="question-card">
 {isMockLoading ? (
-<div className="loading" style={{ padding: '20px' }}><div className="spinner" />Alex is thinking...</div>
+<div className="loading" style={{ padding: '20px' }}><div className="spinner" />Benjamin is thinking...</div>
 ) : (
 <p>{mockQuestion}</p>
 )}
@@ -587,41 +665,55 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 <button className="back-link" onClick={() => setScreen('home')}>← Home</button>
 </div>
 <div className="mock-interviewer" style={{ marginBottom: '20px' }}>
-<div className="interviewer-avatar">👨‍💼</div>
-<div className="interviewer-name">Alex's Hiring Decision</div>
+<div className="interviewer-avatar">BV</div>
+<div className="interviewer-name">Benjamin's Hiring Decision</div>
 </div>
 {isMockLoading ? (
-<div className="loading"><div className="spinner" />Alex is making hiring decision...</div>
+<div className="loading"><div className="spinner" />Benjamin is making hiring decision...</div>
 ) : mockFeedback && (
 <>
+<div className="tabs" style={{ marginBottom: '18px' }}>
+{MOCK_DECISION_TABS.map(tab => (
+<button key={tab.id} className={`tab-btn ${mockFeedbackTab === tab.id ? 'active' : ''}`} onClick={() => setMockFeedbackTab(tab.id)}>
+{tab.label}
+</button>
+))}
+</div>
+<div className="tab-content">
+{mockFeedbackTab === 'decision' && (
 <div className={`decision-card ${
 mockFeedback.decision.includes('STRONG HIRE') ? 'strong-hire' :
 mockFeedback.decision.includes('NOT') ? 'not-hired' :
 mockFeedback.decision.includes('HIRED') ? 'hired' : 'maybe'
 }`}>
-<div className="decision-icon">
-{mockFeedback.decision.includes('STRONG HIRE') ? '🌟' :
-mockFeedback.decision.includes('NOT') ? '❌' :
-mockFeedback.decision.includes('HIRED') ? '✅' : '🤔'}
-</div>
-<div className="decision-text">{mockFeedback.decision}</div>
+<div className="decision-text" style={{ marginBottom: '12px', fontWeight: 700, fontSize: '1rem' }}>{mockFeedback.decision}</div>
 <div className="decision-score">{mockFeedback.score}</div>
 </div>
-<div className="feedback-item" style={{ marginBottom: '12px' }}>
-<span className="fb-label">📋 Overall Impression</span>
+)}
+{mockFeedbackTab === 'summary' && (
+<div className="feedback-item" style={{ marginBottom: '24px' }}>
+<span className="fb-label">Overall Impression</span>
 <p>{mockFeedback.summary}</p>
 </div>
-<div className="feedback-item good" style={{ marginBottom: '12px' }}>
-<span className="fb-label">✅ Strengths</span>
+)}
+{mockFeedbackTab === 'strengths' && (
+<div className="feedback-item good" style={{ marginBottom: '24px' }}>
+<span className="fb-label">Strengths</span>
 <p style={{ whiteSpace: 'pre-line' }}>{mockFeedback.strengths}</p>
 </div>
-<div className="feedback-item improve" style={{ marginBottom: '12px' }}>
-<span className="fb-label">⚠️ Concerns</span>
+)}
+{mockFeedbackTab === 'concerns' && (
+<div className="feedback-item improve" style={{ marginBottom: '24px' }}>
+<span className="fb-label">Concerns</span>
 <p style={{ whiteSpace: 'pre-line' }}>{mockFeedback.concerns}</p>
 </div>
+)}
+{mockFeedbackTab === 'recommendation' && (
 <div className="feedback-item tip" style={{ marginBottom: '24px' }}>
-<span className="fb-label">📝 Recommendation</span>
+<span className="fb-label">Recommendation</span>
 <p>{mockFeedback.recommendation}</p>
+</div>
+)}
 </div>
 <button className="start-btn" onClick={() => {
 setScreen('home')
@@ -635,6 +727,83 @@ setMockFeedback(null)
 </>
 )}
 </div>
+)}
+
+{mode === 'history' && screen === 'home' && (
+  <div style={{ width: '100%', maxWidth: '480px', padding: '0 24px 48px' }}>
+    <div style={{ marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ color: 'var(--snow)', fontSize: '1.2rem', fontWeight: '600', letterSpacing: '-0.02em' }}>Interview History</h2>
+        {history.length > 0 && (
+          <button onClick={() => { localStorage.removeItem(STORAGE_KEY); setHistory([]) }}
+            style={{ background: 'transparent', border: '1px solid var(--smoke)', color: 'var(--fog)', padding: '5px 12px', borderRadius: '9999px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Clear
+          </button>
+        )}
+      </div>
+
+      {history.length > 0 && (() => {
+        const scores = history.map(h => parseFloat(h.score)).filter(s => !isNaN(s))
+        const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-'
+        const practices = history.filter(h => h.type === 'practice').length
+        const mocks = history.filter(h => h.type === 'mock').length
+        const hired = history.filter(h => h.decision?.includes('HIRED') && !h.decision?.includes('NOT')).length
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px', marginBottom: '24px' }}>
+            {[
+              { label: 'Avg Score', value: avg },
+              { label: 'Practice', value: practices },
+              { label: 'Mock', value: mocks },
+              { label: 'Hired', value: hired },
+            ].map(stat => (
+              <div key={stat.label} style={{ background: 'var(--carbon)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 10px', textAlign: 'center' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--snow)', letterSpacing: '-0.03em' }}>{stat.value}</div>
+                <div style={{ fontSize: '10px', color: 'var(--fog)', marginTop: '4px', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
+      {history.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--fog)', fontSize: '14px' }}>
+          No interviews yet. Start practicing!
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {history.map(item => (
+            <div key={item.id} style={{ background: 'var(--carbon)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <span style={{ background: item.type === 'mock' ? 'rgba(4,40,203,0.15)' : 'rgba(52,252,255,0.1)', border: `1px solid ${item.type === 'mock' ? 'var(--signal)' : 'rgba(52,252,255,0.3)'}`, color: item.type === 'mock' ? '#6b8fff' : 'var(--cyan)', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {item.type === 'mock' ? 'Mock' : 'Practice'}
+                  </span>
+                  {item.category && <span style={{ color: 'var(--fog)', fontSize: '12px' }}>{item.category}</span>}
+                  {item.level && <span style={{ color: 'var(--fog)', fontSize: '12px' }}>· {item.level}</span>}
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--fog)', fontFamily: 'IBM Plex Mono, monospace' }}>{item.date}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '13px', color: 'var(--ash)', lineHeight: '1.4', flex: 1, marginRight: '12px' }}>
+                  {item.question ? item.question.slice(0, 60) + '...' : item.jobDescription}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                  {item.score && item.score !== '-' && (
+                    <span style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--snow)', letterSpacing: '-0.02em' }}>{item.score}</span>
+                  )}
+                  {item.decision && (
+                    <span style={{ fontSize: '10px', fontFamily: 'IBM Plex Mono, monospace', color: item.decision.includes('NOT') ? '#ff9592' : '#3ad389', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {item.decision.replace('STRONG ', '')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
 )}
 
 {screen === 'done' && (
