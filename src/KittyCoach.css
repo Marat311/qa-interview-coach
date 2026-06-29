@@ -1,0 +1,96 @@
+.kitty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+}
+
+.kitty-img-box {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: radial-gradient(circle, rgba(0,150,150,0.1) 0%, transparent 70%);
+  border: 1px solid rgba(0,255,200,0.1);
+  transition: all 0.3s ease;
+  animation: float 3s ease-in-out infinite;
+}
+
+.kitty-img-box:hover {
+  border-color: rgba(0,255,200,0.3);
+  box-shadow: 0 0 20px rgba(0,255,200,0.15);
+}
+
+.kitty-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter:
+    brightness(0.9)
+    saturate(1.2)
+    drop-shadow(0 0 12px rgba(0,255,200,0.25))
+    drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+}
+
+.kitty-img-box.fade {
+  animation: fadeSwap 0.3s ease;
+}
+
+.kitty-wrap.recording .kitty-img-box {
+  border-color: rgba(0,255,200,0.4);
+  box-shadow: 0 0 25px rgba(0,255,200,0.2);
+  animation: recordGlow 0.8s ease-in-out infinite alternate, float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes fadeSwap {
+  0% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes recordGlow {
+  from { box-shadow: 0 0 15px rgba(0,255,200,0.2); }
+  to { box-shadow: 0 0 30px rgba(0,255,200,0.5); }
+}
+
+.kitty-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ffcc;
+  box-shadow: 0 0 8px rgba(0,255,200,0.8);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 600px) {
+  .kitty-wrap {
+    bottom: 16px;
+    right: 16px;
+  }
+  .kitty-img-box {
+    width: 80px;
+    height: 80px;
+  }
+}

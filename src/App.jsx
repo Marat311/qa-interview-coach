@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
-import Cat from './Cat'
+import KittyCoach from './KittyCoach'
 
 const CATEGORIES = [
   { id: 'api', label: 'API Testing' },
@@ -656,7 +656,6 @@ setGeneratedQuestions([])
 </div>
 )}
 
-<Cat isActive={isListening} />
 </div>
 )
 }
