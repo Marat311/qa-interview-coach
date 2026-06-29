@@ -558,6 +558,71 @@ style={{ marginBottom: '20px' }}
 </>
 )}
 <p className="hint" style={{ marginTop: '8px' }}> Use Chrome for voice features</p>
+
+{mode === 'history' && (
+  <div className="history-panel">
+    <div className="history-header">
+      <div>
+        <div className="section-label">History</div>
+        <h2>Interview History</h2>
+      </div>
+      {history.length > 0 && (
+        <button className="clear-history-btn" onClick={() => { localStorage.removeItem(STORAGE_KEY); setHistory([]) }}>
+          Clear
+        </button>
+      )}
+    </div>
+
+    {history.length > 0 && (() => {
+      const scores = history.map(h => parseFloat(h.score)).filter(s => !isNaN(s))
+      const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-'
+      const practices = history.filter(h => h.type === 'practice').length
+      const mocks = history.filter(h => h.type === 'mock').length
+      const hired = history.filter(h => h.decision?.includes('HIRED') && !h.decision?.includes('NOT')).length
+      return (
+        <div className="history-stats">
+          {[
+            { label: 'Avg Score', value: avg },
+            { label: 'Practice', value: practices },
+            { label: 'Mock', value: mocks },
+            { label: 'Hired', value: hired },
+          ].map(stat => (
+            <div key={stat.label} className="history-stat-card">
+              <div>{stat.value}</div>
+              <div>{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      )
+    })()}
+
+    {history.length === 0 ? (
+      <div className="history-empty">No interviews yet. Start practicing!</div>
+    ) : (
+      <div className="history-list">
+        {history.map(item => (
+          <div key={item.id} className="history-card">
+            <div className="history-card-top">
+              <div className="history-card-labels">
+                <span className={`history-badge ${item.type}`}>{item.type === 'mock' ? 'Mock' : 'Practice'}</span>
+                {item.category && <span className="history-meta">{item.category}</span>}
+                {item.level && <span className="history-meta">· {item.level}</span>}
+              </div>
+              <span className="history-date">{item.date}</span>
+            </div>
+            <div className="history-card-body">
+              <div className="history-card-copy">{item.question ? item.question.slice(0, 60) + '...' : item.jobDescription}</div>
+              <div className="history-card-score">
+                {item.score && item.score !== '-' && <span className="score-value">{item.score}</span>}
+                {item.decision && <span className={`history-decision ${item.decision.includes('NOT') ? 'no' : 'yes'}`}>{item.decision.replace('STRONG ', '')}</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 </div>
 )}
 
@@ -743,83 +808,6 @@ setMockFeedback(null)
 </>
 )}
 </div>
-)}
-
-{mode === 'history' && screen === 'home' && (
-  <div style={{ width: '100%', maxWidth: '480px', padding: '0 24px 48px' }}>
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ color: 'var(--snow)', fontSize: '1.2rem', fontWeight: '600', letterSpacing: '-0.02em' }}>Interview History</h2>
-        {history.length > 0 && (
-          <button onClick={() => { localStorage.removeItem(STORAGE_KEY); setHistory([]) }}
-            style={{ background: 'transparent', border: '1px solid var(--smoke)', color: 'var(--fog)', padding: '5px 12px', borderRadius: '9999px', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>
-            Clear
-          </button>
-        )}
-      </div>
-
-      {history.length > 0 && (() => {
-        const scores = history.map(h => parseFloat(h.score)).filter(s => !isNaN(s))
-        const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-'
-        const practices = history.filter(h => h.type === 'practice').length
-        const mocks = history.filter(h => h.type === 'mock').length
-        const hired = history.filter(h => h.decision?.includes('HIRED') && !h.decision?.includes('NOT')).length
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', marginBottom: '24px' }}>
-            {[
-              { label: 'Avg Score', value: avg },
-              { label: 'Practice', value: practices },
-              { label: 'Mock', value: mocks },
-              { label: 'Hired', value: hired },
-            ].map(stat => (
-              <div key={stat.label} style={{ background: 'var(--carbon)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px 10px', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--snow)', letterSpacing: '-0.03em' }}>{stat.value}</div>
-                <div style={{ fontSize: '10px', color: 'var(--fog)', marginTop: '4px', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        )
-      })()}
-
-      {history.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--fog)', fontSize: '14px' }}>
-          No interviews yet. Start practicing!
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {history.map(item => (
-            <div key={item.id} style={{ background: 'var(--carbon)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <span style={{ background: item.type === 'mock' ? 'rgba(4,40,203,0.15)' : 'rgba(52,252,255,0.1)', border: `1px solid ${item.type === 'mock' ? 'var(--signal)' : 'rgba(52,252,255,0.3)'}`, color: item.type === 'mock' ? '#6b8fff' : 'var(--cyan)', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontFamily: 'IBM Plex Mono, monospace', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {item.type === 'mock' ? 'Mock' : 'Practice'}
-                  </span>
-                  {item.category && <span style={{ color: 'var(--fog)', fontSize: '12px' }}>{item.category}</span>}
-                  {item.level && <span style={{ color: 'var(--fog)', fontSize: '12px' }}>· {item.level}</span>}
-                </div>
-                <span style={{ fontSize: '11px', color: 'var(--fog)', fontFamily: 'IBM Plex Mono, monospace' }}>{item.date}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '13px', color: 'var(--ash)', lineHeight: '1.4', flex: 1, marginRight: '12px' }}>
-                  {item.question ? item.question.slice(0, 60) + '...' : item.jobDescription}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-                  {item.score && item.score !== '-' && (
-                    <span style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--snow)', letterSpacing: '-0.02em' }}>{item.score}</span>
-                  )}
-                  {item.decision && (
-                    <span style={{ fontSize: '10px', fontFamily: 'IBM Plex Mono, monospace', color: item.decision.includes('NOT') ? '#ff9592' : '#3ad389', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {item.decision.replace('STRONG ', '')}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
 )}
 
 {screen === 'done' && (
