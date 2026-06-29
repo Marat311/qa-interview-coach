@@ -52,7 +52,7 @@ z-index: 1;
 .home {
 width: 100%;
 max-width: 480px;
-padding: 56px 24px 48px;
+padding: 42px 18px 48px;
 }
 
 .badge {
@@ -435,6 +435,44 @@ position: relative;
 font-family: 'IBM Plex Mono', monospace;
 letter-spacing: 0.06em;
 text-transform: uppercase;
+}
+
+@media (max-width: 420px) {
+.home, .interview, .feedback-screen {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.question-card, .answer-box, .feedback-item, .decision-card {
+  padding: 18px;
+}
+
+.mock-interviewer {
+  padding: 12px;
+  gap: 10px;
+}
+
+.question-card p, .feedback-item p, .text-input {
+  font-size: 14px;
+}
+
+.text-input {
+  min-height: 100px;
+}
+
+.mode-tabs, .tabs, .controls {
+  flex-wrap: wrap;
+}
+
+.mode-tab, .tab-btn {
+  font-size: 10px;
+  padding: 10px 12px;
+}
+
+.progress-pill, .back-link {
+  font-size: 10px;
+  padding: 6px 10px;
+}
 }
 
 .divider::before, .divider::after {

@@ -183,13 +183,21 @@ if (audioRef.current) {
 }
 
 const stopMic = () => {
-if (recognitionRef.current) recognitionRef.current.stop()
+if (recognitionRef.current) {
+  recognitionRef.current.stop()
+  recognitionRef.current = null
+}
 setIsListening(false)
 }
 
 const startListening = () => {
+stopSpeech()
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 if (!SpeechRecognition) { alert('Please use Chrome browser.'); return }
+if (recognitionRef.current) {
+  recognitionRef.current.stop()
+  recognitionRef.current = null
+}
 const recognition = new SpeechRecognition()
 recognition.continuous = true
 recognition.interimResults = true
@@ -198,10 +206,18 @@ recognition.onresult = (event) => {
 let finalText = ''
 let interimText = ''
 for (let i = 0; i < event.results.length; i++) {
-if (event.results[i].isFinal) finalText += event.results[i][0].transcript + ' '
-else interimText += event.results[i][0].transcript
+  if (event.results[i].isFinal) finalText += event.results[i][0].transcript + ' '
+  else interimText += event.results[i][0].transcript
 }
 setTextAnswer(finalText + interimText)
+}
+recognition.onend = () => {
+  setIsListening(false)
+  recognitionRef.current = null
+}
+recognition.onerror = () => {
+  setIsListening(false)
+  recognitionRef.current = null
 }
 recognition.start()
 recognitionRef.current = recognition
@@ -548,7 +564,7 @@ style={{ marginBottom: '20px' }}
 {screen === 'interview' && (
 <div className="interview">
 <div className="top-bar">
-<button className="back-link" onClick={() => { stopMic(); setScreen('home') }}>← Back</button>
+<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>← Back</button>
 <div className="progress-pill">{questionIndex + 1} / {questions.length || 4}</div>
 </div>
 <div className="tags">
@@ -583,7 +599,7 @@ style={{ marginBottom: '20px' }}
 {screen === 'feedback' && (
 <div className="feedback-screen">
 <div className="top-bar">
-<button className="back-link" onClick={() => setScreen('home')}>← Home</button>
+<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>← Home</button>
 <div className="progress-pill">{questionIndex + 1} / {questions.length}</div>
 </div>
 <div className="question-recap">{currentQuestion}</div>
@@ -617,7 +633,7 @@ style={{ marginBottom: '20px' }}
 {screen === 'mock-interview' && (
 <div className="interview">
 <div className="top-bar">
-<button className="back-link" onClick={() => { clearInterval(timerRef.current); stopMic(); setScreen('home') }}>← Exit</button>
+<button className="back-link" onClick={() => { clearInterval(timerRef.current); stopSpeech(); stopMic(); setScreen('home') }}>← Exit</button>
 <div style={{
 background: timeLeft < 300 ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
 border: `1px solid ${timeLeft < 300 ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
@@ -662,7 +678,7 @@ padding: '6px 16px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '700'
 {screen === 'mock-feedback' && (
 <div className="feedback-screen">
 <div className="top-bar">
-<button className="back-link" onClick={() => setScreen('home')}>← Home</button>
+<button className="back-link" onClick={() => { stopSpeech(); stopMic(); setScreen('home') }}>← Home</button>
 </div>
 <div className="mock-interviewer" style={{ marginBottom: '20px' }}>
 <div className="interviewer-avatar">BV</div>
@@ -749,7 +765,7 @@ setMockFeedback(null)
         const mocks = history.filter(h => h.type === 'mock').length
         const hired = history.filter(h => h.decision?.includes('HIRED') && !h.decision?.includes('NOT')).length
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', marginBottom: '24px' }}>
             {[
               { label: 'Avg Score', value: avg },
               { label: 'Practice', value: practices },
