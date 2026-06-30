@@ -472,6 +472,12 @@ gap: 8px;
 margin-bottom: 24px;
 }
 
+.stack-list {
+display: grid;
+gap: 10px;
+margin-bottom: 24px;
+}
+
 .grid-3 {
 display: grid;
 grid-template-columns: 1fr 1fr 1fr;

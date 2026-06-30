@@ -109,6 +109,7 @@ const LEVELS = [
   { id: 'senior', label: 'Senior', color: '#60a5fa' },
   { id: 'lead', label: 'Lead', color: '#f87171' },
   { id: 'manager', label: 'Manager', color: '#8b5cf6' },
+  { id: 'director', label: 'Director', color: '#ec4899' },
 ]
 
 const TABS = [
@@ -661,7 +662,7 @@ return (
 {selectionStep === 'category' && (
 <>
 <div className="section-label">Main Category</div>
-<div className="grid-2">
+<div className="stack-list">
 {CATEGORIES.map(cat => (
 <button key={cat.id} className={`card-btn ${category === cat.id ? 'selected' : ''}`} onClick={() => { setCategory(cat.id); setSubcategory(null); setLevel(null); setSelectionStep('subcategory') }}>
 <span>{cat.label}</span>
@@ -677,7 +678,7 @@ return (
 <button className="back-link" onClick={() => { setSelectionStep('category'); setCategory(null); setSubcategory(null); setLevel(null) }}>Back</button>
 </div>
 <div className="section-label" style={{ marginTop: '10px' }}>Subcategory</div>
-<div className="grid-2">
+<div className="stack-list">
 {selectedCategoryObj.subcategories.map(sub => (
 <button key={sub.id} className={`card-btn ${subcategory === sub.id ? 'selected' : ''}`} onClick={() => { setSubcategory(sub.id); setLevel(null); setSelectionStep('level') }}>
 <span>{sub.label}</span>
