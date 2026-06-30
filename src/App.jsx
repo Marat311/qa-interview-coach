@@ -660,7 +660,6 @@ return (
 <>
 {selectionStep === 'category' && (
 <>
-<p>Step 1: Select a main category</p>
 <div className="section-label">Main Category</div>
 <div className="grid-2">
 {CATEGORIES.map(cat => (
@@ -676,9 +675,7 @@ return (
 <>
 <div className="top-bar">
 <button className="back-link" onClick={() => { setSelectionStep('category'); setCategory(null); setSubcategory(null); setLevel(null) }}>Back</button>
-<div className="progress-pill">Step 2 / 3</div>
 </div>
-<p>Step 2: Select a subcategory for <strong>{categoryLabel}</strong></p>
 <div className="section-label" style={{ marginTop: '10px' }}>Subcategory</div>
 <div className="grid-2">
 {selectedCategoryObj.subcategories.map(sub => (
@@ -694,9 +691,7 @@ return (
 <>
 <div className="top-bar">
 <button className="back-link" onClick={() => { setSelectionStep('subcategory'); setSubcategory(null); setLevel(null) }}>Back</button>
-<div className="progress-pill">Step 3 / 3</div>
 </div>
-<p>Step 3: Select your experience level</p>
 <div className="section-label">Level</div>
 <div className="grid-3">
 {LEVELS.map(lvl => (
