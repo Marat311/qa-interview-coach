@@ -715,7 +715,6 @@ Start Practice
 
 {mode === 'mock' && (
 <>
-<p className="mock-intro">Paste a real job description and your resume for a personalized 30-minute mock interview</p>
 <div className="section-label">Job Description *</div>
 <textarea
 className="text-input jd-input"
