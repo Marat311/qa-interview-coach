@@ -190,6 +190,11 @@ useEffect(() => {
 if (mode === 'history') {
 setHistory(loadHistory())
 }
+if (mode !== 'mock') {
+setJobDescription('')
+setResume('')
+setCandidateName('')
+}
 }, [mode])
 
 const speak = async (text) => {
@@ -587,6 +592,10 @@ const parseField = (text, field) => {
   const match = text.match(new RegExp(`${field}:\\s*([\\s\\S]*?)(?=\\n[A-Z ]+:|$)`, 'i'))
   return match?.[1]?.trim().split(/\r?\n/)[0].trim() || ''
 }
+const normalizeDecision = (value) => {
+  if (!value) return ''
+  return value.replace(/[.\s]+$/g, '').trim().toUpperCase()
+}
 try {
 const text = await callAPI(`You are Benjamin, a QA Manager interviewer. You just finished interviewing ${candidateName || 'the candidate'}.
 
@@ -603,7 +612,7 @@ SUMMARY: [2-3 sentences overall impression]
 STRENGTHS: [2-3 bullet points starting with •]
 CONCERNS: [2-3 bullet points starting with •]
 RECOMMENDATION: [1-2 sentences final recommendation]`, 1000)
-decision = parseField(text, 'DECISION') || ''
+decision = normalizeDecision(parseField(text, 'DECISION')) || ''
 score = parseField(text, 'SCORE') || ''
 summary = text.match(/SUMMARY:\s*([\s\S]+?)(?=STRENGTHS:|$)/i)?.[1]?.trim() || ''
 strengths = text.match(/STRENGTHS:\s*([\s\S]+?)(?=CONCERNS:|$)/i)?.[1]?.trim() || ''
@@ -626,7 +635,7 @@ const nextHistory = saveInterview({
   concerns,
   recommendation,
 })
-setHistory(loadHistory())
+setHistory(nextHistory)
 }
 
 return (
@@ -634,7 +643,6 @@ return (
 
 {screen === 'home' && (
 <div className="home">
-<div className="badge">AI Powered</div>
 <h1>QA Interview <span className="gradient-word">Coach</span></h1>
 <div className="mode-tabs">
   <button className={`mode-tab ${mode === 'practice' ? 'active' : ''}`} onClick={() => { setMode('practice'); setSelectionStep('category'); setCategory(null); setSubcategory(null); setLevel(null) }}>
@@ -666,12 +674,12 @@ return (
 
 {selectionStep === 'subcategory' && selectedCategoryObj && (
 <>
-<div className="top-bar" style={{ marginBottom: '22px' }}>
+<div className="top-bar">
 <button className="back-link" onClick={() => { setSelectionStep('category'); setCategory(null); setSubcategory(null); setLevel(null) }}>Back</button>
 <div className="progress-pill">Step 2 / 3</div>
 </div>
 <p>Step 2: Select a subcategory for <strong>{categoryLabel}</strong></p>
-<div className="section-label">Subcategory</div>
+<div className="section-label" style={{ marginTop: '10px' }}>Subcategory</div>
 <div className="grid-2">
 {selectedCategoryObj.subcategories.map(sub => (
 <button key={sub.id} className={`card-btn ${subcategory === sub.id ? 'selected' : ''}`} onClick={() => { setSubcategory(sub.id); setLevel(null); setSelectionStep('level') }}>
@@ -684,7 +692,7 @@ return (
 
 {selectionStep === 'level' && selectedSubcategoryObj && (
 <>
-<div className="top-bar" style={{ marginBottom: '22px' }}>
+<div className="top-bar">
 <button className="back-link" onClick={() => { setSelectionStep('subcategory'); setSubcategory(null); setLevel(null) }}>Back</button>
 <div className="progress-pill">Step 3 / 3</div>
 </div>
@@ -707,7 +715,7 @@ Start Practice
 
 {mode === 'mock' && (
 <>
-<p>Paste a real job description and your resume for a personalized 30-minute mock interview</p>
+<p className="mock-intro">Paste a real job description and your resume for a personalized 30-minute mock interview</p>
 <div className="section-label">Job Description *</div>
 <textarea
 className="text-input jd-input"
@@ -737,16 +745,14 @@ style={{ marginBottom: '20px' }}
 <button className="start-btn" onClick={startMockInterview} disabled={!jobDescription.trim()}>
  Start Mock Interview
 </button>
-<p className="hint"> ~30 minutes · 8 questions · Hiring decision at the end</p>
 </>
 )}
-<p className="hint" style={{ marginTop: '8px' }}> Use Chrome for voice features</p>
+
 
 {mode === 'history' && (
   <div className="history-panel">
     <div className="history-header">
       <div>
-        <div className="section-label">History</div>
         <h2>Interview History</h2>
       </div>
       {history.length > 0 && (

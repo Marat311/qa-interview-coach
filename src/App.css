@@ -53,13 +53,16 @@ z-index: 1;
 }
 
 /* HOME */
-.home, .history-panel {
+.home {
 width: 100%;
 max-width: 480px;
 padding: 42px 18px 48px;
 }
 
 .history-panel {
+width: 100%;
+max-width: 480px;
+padding: 20px 18px 24px;
 background: rgba(255,255,255,0.02);
 border: 1px solid rgba(255,255,255,0.06);
 border-radius: 18px;
@@ -68,9 +71,16 @@ border-radius: 18px;
 .history-header {
 display: flex;
 justify-content: space-between;
-align-items: flex-end;
-gap: 16px;
+align-items: center;
+gap: 12px;
+flex-wrap: nowrap;
 margin-bottom: 24px;
+}
+
+.history-header h2 {
+font-size: 14px;
+margin: 0;
+white-space: nowrap;
 }
 
 .clear-history-btn {
@@ -86,8 +96,8 @@ font-family: inherit;
 
 .history-stats {
 display: grid;
-grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-gap: 8px;
+grid-template-columns: repeat(4, minmax(70px, 1fr));
+gap: 6px;
 margin-bottom: 24px;
 }
 
@@ -95,8 +105,9 @@ margin-bottom: 24px;
 background: var(--carbon);
 border: 1px solid var(--border);
 border-radius: 12px;
-padding: 14px 10px;
+padding: 6px 6px;
 text-align: center;
+font-size: 0.78rem;
 }
 
 .history-stat-card.avg-score {
@@ -112,9 +123,9 @@ color: #6b8fff;
 }
 
 .history-stat-card.hired-score.hired-positive {
-background: rgba(239, 68, 68, 0.18);
-border-color: #ef4444;
-color: #fda4af;
+background: rgba(22, 163, 74, 0.18);
+border-color: #22c55e;
+color: #a7f3d0;
 }
 
 .history-stat-card.avg-score.avg-low {
@@ -391,6 +402,21 @@ margin-bottom: 40px;
 line-height: 1.6;
 font-size: 15px;
 font-weight: 400;
+}
+
+.mock-intro {
+font-size: 13px;
+line-height: 1.4;
+color: var(--fog);
+margin-bottom: 14px;
+}
+
+/* MODE TABS */
+.mode-tabs {
+display: flex;
+gap: 8px;
+margin-bottom: 36px;
+flex-wrap: wrap;
 }
 
 /* MODE TABS */
