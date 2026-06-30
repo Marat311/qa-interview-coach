@@ -170,6 +170,17 @@ const questions = generatedQuestions
 const currentQuestion = questions[questionIndex]
 
 useEffect(() => {
+  if (!('speechSynthesis' in window)) return
+  const voices = window.speechSynthesis.getVoices()
+  if (voices.length === 0) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices()
+      window.speechSynthesis.onvoiceschanged = null
+    }
+  }
+}, [])
+
+useEffect(() => {
 if (textareaRef.current) {
 textareaRef.current.scrollTop = textareaRef.current.scrollHeight
 }
@@ -184,6 +195,9 @@ setHistory(loadHistory())
 const speak = async (text) => {
 if (!text) return
 window.speechSynthesis.cancel()
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices()
+}
 
 const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY
 const voiceId = import.meta.env.VITE_ELEVENLABS_VOICE_ID
@@ -255,6 +269,15 @@ doSpeak()
 }
 }
 
+const primeSpeech = () => {
+  if (!('speechSynthesis' in window)) return
+  const utterance = new SpeechSynthesisUtterance('Ready')
+  utterance.volume = 0
+  utterance.rate = 1
+  utterance.pitch = 1
+  window.speechSynthesis.speak(utterance)
+}
+
 const stopSpeech = () => {
 window.speechSynthesis.cancel()
 if (audioRef.current) {
@@ -277,13 +300,16 @@ stopSpeech()
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
 if (!SpeechRecognition) { alert('Please use Chrome browser.'); return }
 if (recognitionRef.current) {
-  recognitionRef.current.stop()
+  recognitionRef.current.onend = null
+  recognitionRef.current.onerror = null
+  recognitionRef.current.abort()
   recognitionRef.current = null
 }
 const recognition = new SpeechRecognition()
 recognition.continuous = true
 recognition.interimResults = true
 recognition.lang = 'en-US'
+recognition.maxAlternatives = 1
 recognition.onresult = (event) => {
 let finalText = ''
 let interimText = ''
@@ -293,17 +319,29 @@ for (let i = 0; i < event.results.length; i++) {
 }
 setTextAnswer(finalText + interimText)
 }
+recognition.onstart = () => {
+  setIsListening(true)
+}
 recognition.onend = () => {
   setIsListening(false)
   recognitionRef.current = null
 }
-recognition.onerror = () => {
+recognition.onerror = (event) => {
+  console.log('Speech recognition error:', event.error || event)
   setIsListening(false)
   recognitionRef.current = null
+  if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+    alert('Microphone access was blocked. Please allow microphone permission to record your answer.')
+  }
 }
-recognition.start()
-recognitionRef.current = recognition
-setIsListening(true)
+try {
+  recognition.start()
+  recognitionRef.current = recognition
+} catch (error) {
+  console.log('Speech recognition start failed:', error)
+  setIsListening(false)
+  alert('Could not start recording. Please try again.')
+}
 }
 
 const callAPI = async (content, maxTokens = 600) => {
@@ -326,6 +364,7 @@ return data.content[0].text
 }
 
 const startInterview = async () => {
+primeSpeech()
 setScreen('interview')
 setQuestionIndex(0)
 setTextAnswer('')
@@ -448,6 +487,7 @@ return 'avg-high'
 }
 
 const startMockInterview = async () => {
+primeSpeech()
 setScreen('mock-interview')
 setMockHistory([])
 setMockQuestionNum(1)
