@@ -6,7 +6,8 @@ const STORAGE_KEY = 'qa_coach_history'
 const saveInterview = (data) => {
   try {
     const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    const nextHistory = [{ ...data, id: Date.now(), date: new Date().toLocaleDateString() }, ...history]
+    const normalizedType = String(data.type || '').toLowerCase()
+    const nextHistory = [{ ...data, type: normalizedType, id: Date.now(), date: new Date().toLocaleDateString() }, ...history]
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextHistory.slice(0, 50)))
     return nextHistory.slice(0, 50)
   } catch (e) {
@@ -16,18 +17,90 @@ const saveInterview = (data) => {
 
 const loadHistory = () => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]').map(item => ({
+      ...item,
+      type: String(item.type || '').toLowerCase().trim(),
+    }))
   } catch (e) { return [] }
 }
 
 const CATEGORIES = [
-  { id: 'api', label: 'API Testing' },
-  { id: 'sql', label: 'SQL & Data' },
-  { id: 'softskills', label: 'Soft Skills' },
-  { id: 'automation', label: 'Automation' },
-  { id: 'ui', label: 'UI Testing' },
-  { id: 'playwright', label: 'Playwright' },
-  { id: 'ai', label: 'AI Testing' },
+  {
+    id: 'fundamentals',
+    label: 'Testing Fundamentals',
+    subcategories: [
+      { id: 'test-design', label: 'Test Design' },
+      { id: 'bug-reporting', label: 'Bug Reporting' },
+      { id: 'test-planning', label: 'Test Planning' },
+    ],
+  },
+  {
+    id: 'automation',
+    label: 'Automation Engineering',
+    subcategories: [
+      { id: 'selenium', label: 'Selenium' },
+      { id: 'playwright', label: 'Playwright' },
+      { id: 'cypress', label: 'Cypress' },
+      { id: 'appium', label: 'Appium' },
+      { id: 'api-automation', label: 'API Automation' },
+    ],
+  },
+  {
+    id: 'programming',
+    label: 'Programming Languages',
+    subcategories: [
+      { id: 'python', label: 'Python' },
+      { id: 'java', label: 'Java' },
+      { id: 'javascript', label: 'JavaScript/TypeScript' },
+      { id: 'sql', label: 'SQL' },
+    ],
+  },
+  {
+    id: 'api-integration',
+    label: 'API & Integration',
+    subcategories: [
+      { id: 'rest-api', label: 'REST API' },
+      { id: 'graphql', label: 'GraphQL' },
+      { id: 'contract-testing', label: 'Contract Testing' },
+      { id: 'microservices', label: 'Microservices' },
+    ],
+  },
+  {
+    id: 'performance',
+    label: 'Performance & Security',
+    subcategories: [
+      { id: 'load-testing', label: 'Load Testing' },
+      { id: 'security-testing', label: 'Security Testing' },
+      { id: 'accessibility', label: 'Accessibility' },
+    ],
+  },
+  {
+    id: 'devops',
+    label: 'DevOps & CI/CD',
+    subcategories: [
+      { id: 'git', label: 'Git' },
+      { id: 'ci-cd', label: 'CI/CD Pipelines' },
+      { id: 'docker', label: 'Docker' },
+    ],
+  },
+  {
+    id: 'ai-data',
+    label: 'AI & Data Testing',
+    subcategories: [
+      { id: 'ai-testing', label: 'AI Testing' },
+      { id: 'data-quality', label: 'Data Quality' },
+      { id: 'ml-model-testing', label: 'ML Model Testing' },
+    ],
+  },
+  {
+    id: 'professional',
+    label: 'Professional Skills',
+    subcategories: [
+      { id: 'agile-scrum', label: 'Agile/Scrum' },
+      { id: 'leadership', label: 'Leadership' },
+      { id: 'system-design', label: 'System Design for QA' },
+    ],
+  },
 ]
 
 const LEVELS = [
@@ -58,6 +131,8 @@ export default function App() {
 const [screen, setScreen] = useState('home')
 const [mode, setMode] = useState('practice')
 const [category, setCategory] = useState(null)
+const [subcategory, setSubcategory] = useState(null)
+const [selectionStep, setSelectionStep] = useState('category')
 const [level, setLevel] = useState(null)
 const [questionIndex, setQuestionIndex] = useState(0)
 const [isListening, setIsListening] = useState(false)
@@ -84,6 +159,12 @@ const recognitionRef = useRef(null)
 const textareaRef = useRef(null)
 const timerRef = useRef(null)
 const audioRef = useRef(null)
+
+const selectedCategoryObj = CATEGORIES.find(c => c.id === category)
+const selectedSubcategoryObj = selectedCategoryObj?.subcategories?.find(s => s.id === subcategory)
+const categoryLabel = selectedCategoryObj?.label || ''
+const subcategoryLabel = selectedSubcategoryObj?.label || ''
+const categoryPath = subcategoryLabel ? `${categoryLabel} / ${subcategoryLabel}` : categoryLabel
 
 const questions = generatedQuestions
 const currentQuestion = questions[questionIndex]
@@ -254,12 +335,13 @@ setGeneratedQuestions([])
 stopMic()
 setIsLoading(true)
 try {
-const text = await callAPI(`Generate exactly 4 unique, technical interview questions for a ${level}-level ${category} QA/SDET engineer.
+const prompt = `Generate exactly 4 unique, technical interview questions for a ${level}-level QA/SDET engineer specializing in ${categoryLabel} and ${subcategoryLabel}.
 Return ONLY a JSON array of 4 strings, no explanations, no markdown, no numbering.
 Example: ["Question 1?","Question 2?","Question 3?","Question 4?"]
-Make questions specific, technical, and appropriately challenging for ${level} level.
+Make questions specific to both the main category ${categoryLabel} and the subcategory ${subcategoryLabel}.
 Use this random seed to ensure variety: ${Math.random().toString(36).substring(7)}-${Date.now()}
-Never repeat common questions. Focus on real scenarios, edge cases, and problem-solving.`)
+Never repeat common questions. Focus on real scenarios, edge cases, and problem-solving.`
+const text = await callAPI(prompt)
 const clean = text.replace(/```json|```/g, '').trim()
 const parsed = JSON.parse(clean)
 setGeneratedQuestions(parsed)
@@ -267,10 +349,10 @@ setIsLoading(false)
 setTimeout(() => speak(parsed[0]), 500)
 } catch (error) {
 const fallback = [
-`Explain your ${category} testing approach at ${level} level.`,
-`What tools do you use for ${category} and why?`,
-`Describe a challenging ${category} problem you solved.`,
-`How do you ensure quality in ${category} at ${level} level?`,
+`Explain your ${subcategoryLabel || categoryLabel} testing approach at ${level} level.`,
+`What tools do you use for ${subcategoryLabel || categoryLabel} and why?`,
+`Describe a challenging ${subcategoryLabel || categoryLabel} problem you solved.`,
+`How do you ensure quality in ${subcategoryLabel || categoryLabel} at ${level} level?`,
 ]
 setGeneratedQuestions(fallback)
 setIsLoading(false)
@@ -301,7 +383,7 @@ let improve = ''
 let tip = ''
 let ideal = ''
 try {
-const text = await callAPI(`You are a senior QA interviewer evaluating a ${level}-level candidate for ${category} skills.
+const text = await callAPI(`You are a senior QA interviewer evaluating a ${level}-level candidate for ${subcategoryLabel || categoryLabel} skills within ${categoryLabel}.
 Question: "${currentQuestion}"
 Candidate answer: "${textAnswer}"
 
@@ -323,7 +405,7 @@ setFeedback({ score: '-', good: 'Error', improve: 'Could not get feedback', tip:
 setIsLoading(false)
 saveInterview({
   type: 'practice',
-  category: CATEGORIES.find(c => c.id === category)?.label,
+  category: categoryPath,
   level,
   question: currentQuestion,
   score: score || feedback?.score || '-',
@@ -336,6 +418,9 @@ stopMic()
 stopSpeech()
 setRephrasedQuestion('')
 setTextAnswer('')
+if (textareaRef.current) {
+  textareaRef.current.value = ''
+}
 setFeedback(null)
 if (questionIndex < questions.length - 1) {
 const next = questionIndex + 1
@@ -452,6 +537,12 @@ stopSpeech()
 setScreen('mock-feedback')
 setIsMockLoading(true)
 clearInterval(timerRef.current)
+let decision = ''
+let score = ''
+let summary = ''
+let strengths = ''
+let concerns = ''
+let recommendation = ''
 try {
 const text = await callAPI(`You are Benjamin, a QA Manager interviewer. You just finished interviewing ${candidateName || 'the candidate'}.
 
@@ -468,12 +559,12 @@ SUMMARY: [2-3 sentences overall impression]
 STRENGTHS: [2-3 bullet points starting with •]
 CONCERNS: [2-3 bullet points starting with •]
 RECOMMENDATION: [1-2 sentences final recommendation]`, 1000)
-const decision = text.match(/DECISION:\s*(.+)/)?.[1]?.trim() || ''
-const score = text.match(/SCORE:\s*(.+)/)?.[1]?.trim() || ''
-const summary = text.match(/SUMMARY:\s*([\s\S]+?)(?=STRENGTHS:)/)?.[1]?.trim() || ''
-const strengths = text.match(/STRENGTHS:\s*([\s\S]+?)(?=CONCERNS:)/)?.[1]?.trim() || ''
-const concerns = text.match(/CONCERNS:\s*([\s\S]+?)(?=RECOMMENDATION:)/)?.[1]?.trim() || ''
-const recommendation = text.match(/RECOMMENDATION:\s*([\s\S]+)/)?.[1]?.trim() || ''
+decision = text.match(/DECISION:\s*(.+)/)?.[1]?.trim() || ''
+score = text.match(/SCORE:\s*(.+)/)?.[1]?.trim() || ''
+summary = text.match(/SUMMARY:\s*([\s\S]+?)(?=STRENGTHS:)/)?.[1]?.trim() || ''
+strengths = text.match(/STRENGTHS:\s*([\s\S]+?)(?=CONCERNS:)/)?.[1]?.trim() || ''
+concerns = text.match(/CONCERNS:\s*([\s\S]+?)(?=RECOMMENDATION:)/)?.[1]?.trim() || ''
+recommendation = text.match(/RECOMMENDATION:\s*([\s\S]+)/)?.[1]?.trim() || ''
 setMockFeedback({ decision, score, summary, strengths, concerns, recommendation })
 setMockFeedbackTab('decision')
 } catch (error) {
@@ -491,7 +582,7 @@ const nextHistory = saveInterview({
   concerns,
   recommendation,
 })
-setHistory(nextHistory)
+setHistory(loadHistory())
 }
 
 return (
@@ -502,7 +593,7 @@ return (
 <div className="badge">AI Powered</div>
 <h1>QA Interview <span className="gradient-word">Coach</span></h1>
 <div className="mode-tabs">
-  <button className={`mode-tab ${mode === 'practice' ? 'active' : ''}`} onClick={() => setMode('practice')}>
+  <button className={`mode-tab ${mode === 'practice' ? 'active' : ''}`} onClick={() => { setMode('practice'); setSelectionStep('category'); setCategory(null); setSubcategory(null); setLevel(null) }}>
     Practice
   </button>
   <button className={`mode-tab ${mode === 'mock' ? 'active' : ''}`} onClick={() => setMode('mock')}>
@@ -515,15 +606,45 @@ return (
 
 {mode === 'practice' && (
 <>
-<p>Choose your focus area and level to start practicing</p>
-<div className="section-label">Category</div>
+{selectionStep === 'category' && (
+<>
+<p>Step 1: Select a main category</p>
+<div className="section-label">Main Category</div>
 <div className="grid-2">
 {CATEGORIES.map(cat => (
-<button key={cat.id} className={`card-btn ${category === cat.id ? 'selected' : ''}`} onClick={() => setCategory(cat.id)}>
+<button key={cat.id} className={`card-btn ${category === cat.id ? 'selected' : ''}`} onClick={() => { setCategory(cat.id); setSubcategory(null); setLevel(null); setSelectionStep('subcategory') }}>
 <span>{cat.label}</span>
 </button>
 ))}
 </div>
+</>
+)}
+
+{selectionStep === 'subcategory' && selectedCategoryObj && (
+<>
+<div className="top-bar" style={{ marginBottom: '22px' }}>
+<button className="back-link" onClick={() => { setSelectionStep('category'); setCategory(null); setSubcategory(null); setLevel(null) }}>Back</button>
+<div className="progress-pill">Step 2 / 3</div>
+</div>
+<p>Step 2: Select a subcategory for <strong>{categoryLabel}</strong></p>
+<div className="section-label">Subcategory</div>
+<div className="grid-2">
+{selectedCategoryObj.subcategories.map(sub => (
+<button key={sub.id} className={`card-btn ${subcategory === sub.id ? 'selected' : ''}`} onClick={() => { setSubcategory(sub.id); setLevel(null); setSelectionStep('level') }}>
+<span>{sub.label}</span>
+</button>
+))}
+</div>
+</>
+)}
+
+{selectionStep === 'level' && selectedSubcategoryObj && (
+<>
+<div className="top-bar" style={{ marginBottom: '22px' }}>
+<button className="back-link" onClick={() => { setSelectionStep('subcategory'); setSubcategory(null); setLevel(null) }}>Back</button>
+<div className="progress-pill">Step 3 / 3</div>
+</div>
+<p>Step 3: Select your experience level</p>
 <div className="section-label">Level</div>
 <div className="grid-3">
 {LEVELS.map(lvl => (
@@ -532,9 +653,11 @@ return (
 </button>
 ))}
 </div>
-<button className="start-btn" onClick={startInterview} disabled={!category || !level}>
+<button className="start-btn" onClick={startInterview} disabled={!category || !subcategory || !level}>
 Start Practice
 </button>
+</>
+)}
 </>
 )}
 
@@ -592,13 +715,16 @@ style={{ marginBottom: '20px' }}
     {history.length > 0 && (() => {
       const scores = history.map(h => parseFloat(h.score)).filter(s => !isNaN(s))
       const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '-'
-      const practices = history.filter(h => h.type === 'practice').length
-      const mocks = history.filter(h => h.type === 'mock').length
-      const hired = history.filter(h => h.decision?.includes('HIRED') && !h.decision?.includes('NOT')).length
+      const practices = history.filter(h => String(h.type || '').toLowerCase() === 'practice').length
+      const mocks = history.filter(h => String(h.type || '').toLowerCase() === 'mock').length
+      const hired = history.filter(h => {
+        const decision = String(h.decision || '').toUpperCase()
+        return /\b(STRONG HIRE|HIRED|HIRE)\b/.test(decision) && !/\bNOT\b/.test(decision)
+      }).length
       const createClass = (label, value) => {
         if (label === 'Practice' || label === 'Mock') return 'blue-tab'
         if (label === 'Avg Score') return `avg-score ${avgScoreClass(value)}`
-        if (label === 'Hired') return `hired-score ${avgScoreClass(value)}`
+        if (label === 'Hired') return value > 0 ? 'hired-score hired-positive' : 'hired-score'
         return ''
       }
       return (
@@ -622,25 +748,36 @@ style={{ marginBottom: '20px' }}
       <div className="history-empty">No interviews yet. Start practicing!</div>
     ) : (
       <div className="history-list">
-        {history.map(item => (
-          <div key={item.id} className={`history-card ${item.type}`}>
-            <div className="history-card-top">
-              <div className="history-card-labels">
-                <span className={`history-badge ${item.type}`}>{item.type === 'mock' ? 'Mock' : 'Practice'}</span>
-                {item.category && <span className="history-meta">{item.category}</span>}
-                {item.level && <span className="history-meta">· {item.level}</span>}
+        {history.map(item => {
+          const scoreValue = parseFloat(item.score)
+          const isMockGood = item.type === 'mock' && !isNaN(scoreValue) && scoreValue >= 8
+          const decisionText = String(item.decision || '').toUpperCase()
+          const isNotHired = /\bNOT\b/.test(decisionText)
+          const isHired = /\b(STRONG HIRE|HIRED|HIRE)\b/.test(decisionText) && !isNotHired
+          const decisionClass = isNotHired ? 'not-hired' : isHired ? 'hired' : ''
+
+          return (
+            <div key={item.id} className={`history-card ${item.type} ${isMockGood ? 'mock-good' : ''} ${isHired ? 'hired' : isNotHired ? 'not-hired' : ''}`}>
+              <div className="history-card-top">
+                <div className="history-card-labels">
+                  <span className={`history-badge ${item.type}`}>{item.type === 'mock' ? 'Mock' : 'Practice'}</span>
+                  {item.category && <span className="history-meta">{item.category}</span>}
+                  {item.level && <span className="history-meta">· {item.level}</span>}
+                </div>
+                <span className="history-date">{item.date}</span>
               </div>
-              <span className="history-date">{item.date}</span>
-            </div>
-            <div className="history-card-body">
-              <div className="history-card-copy">{item.question || item.jobDescription}</div>
-              <div className="history-card-score">
-                {item.score && item.score !== '-' && <span className="score-value">{item.score}</span>}
-                {item.decision && <span className={`history-decision ${item.decision.includes('NOT') ? 'no' : 'yes'}`}>{item.decision.replace('STRONG ', '')}</span>}
+              <div className="history-card-body">
+                <div className="history-card-copy">
+                  {item.type === 'mock' ? `Mock Interview • ${item.jobDescription}` : item.question}
+                </div>
+                <div className="history-card-score">
+                  {item.score && item.score !== '-' && <span className="score-value">{item.score}</span>}
+                  {item.decision && <span className={`history-decision ${decisionClass}`}>{item.decision.replace('STRONG ', '')}</span>}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     )}
   </div>
@@ -820,6 +957,8 @@ mockFeedback.decision.includes('HIRED') ? 'hired' : 'maybe'
 </div>
 <button className="start-btn" onClick={() => {
 setScreen('home')
+setMode('home')
+setHistory(loadHistory())
 setMockHistory([])
 setJobDescription('')
 setResume('')
