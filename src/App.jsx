@@ -583,6 +583,10 @@ let summary = ''
 let strengths = ''
 let concerns = ''
 let recommendation = ''
+const parseField = (text, field) => {
+  const match = text.match(new RegExp(`${field}:\\s*([\\s\\S]*?)(?=\\n[A-Z ]+:|$)`, 'i'))
+  return match?.[1]?.trim().split(/\r?\n/)[0].trim() || ''
+}
 try {
 const text = await callAPI(`You are Benjamin, a QA Manager interviewer. You just finished interviewing ${candidateName || 'the candidate'}.
 
@@ -599,12 +603,12 @@ SUMMARY: [2-3 sentences overall impression]
 STRENGTHS: [2-3 bullet points starting with •]
 CONCERNS: [2-3 bullet points starting with •]
 RECOMMENDATION: [1-2 sentences final recommendation]`, 1000)
-decision = text.match(/DECISION:\s*(.+)/)?.[1]?.trim() || ''
-score = text.match(/SCORE:\s*(.+)/)?.[1]?.trim() || ''
-summary = text.match(/SUMMARY:\s*([\s\S]+?)(?=STRENGTHS:)/)?.[1]?.trim() || ''
-strengths = text.match(/STRENGTHS:\s*([\s\S]+?)(?=CONCERNS:)/)?.[1]?.trim() || ''
-concerns = text.match(/CONCERNS:\s*([\s\S]+?)(?=RECOMMENDATION:)/)?.[1]?.trim() || ''
-recommendation = text.match(/RECOMMENDATION:\s*([\s\S]+)/)?.[1]?.trim() || ''
+decision = parseField(text, 'DECISION') || ''
+score = parseField(text, 'SCORE') || ''
+summary = text.match(/SUMMARY:\s*([\s\S]+?)(?=STRENGTHS:|$)/i)?.[1]?.trim() || ''
+strengths = text.match(/STRENGTHS:\s*([\s\S]+?)(?=CONCERNS:|$)/i)?.[1]?.trim() || ''
+concerns = text.match(/CONCERNS:\s*([\s\S]+?)(?=RECOMMENDATION:|$)/i)?.[1]?.trim() || ''
+recommendation = text.match(/RECOMMENDATION:\s*([\s\S]+)/i)?.[1]?.trim() || ''
 setMockFeedback({ decision, score, summary, strengths, concerns, recommendation })
 setMockFeedbackTab('decision')
 } catch (error) {
